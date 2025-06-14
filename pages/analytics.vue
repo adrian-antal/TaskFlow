@@ -1,6 +1,30 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-primary-50 via-blue-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-    <!-- Mobile Sidebar Overlay -->
+    <!-- Access Denied Message for Non-Admins -->
+    <div v-if="!isCompanyAdmin" class="min-h-screen flex items-center justify-center">
+      <div class="text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">Access Restricted</h3>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Analytics are only available to company administrators.</p>
+        <div class="mt-6">
+          <NuxtLink
+            to="/dashboard"
+            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Dashboard
+          </NuxtLink>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Content (Admin Only) -->
+    <div v-else>
+      <!-- Mobile Sidebar Overlay -->
     <div 
       v-if="sidebarOpen" 
       class="fixed inset-0 z-40 lg:hidden"
@@ -662,7 +686,8 @@
         </div>
       </div>
     </main>
-  </div>
+    </div> <!-- End of admin-only content -->
+  </div> <!-- End of main container -->
 </template>
 
 <script setup>
@@ -691,7 +716,67 @@ const {
   formatTimeWithMinutes
 } = useAnalytics()
 
-const { teams, fetchTeams, currentCompany } = useTeam()
+const { teams, fetchTeams } = useTeam()
+
+// Admin role checking
+const isCompanyAdmin = ref(false)
+const currentCompany = ref(null)
+
+// Check if user is company admin
+const checkAdminStatus = async () => {
+  if (!user.value) return false
+  
+  try {
+    const { data: companyMember, error } = await client
+      .from('company_members')
+      .select('role, company_id, company:companies(*)')
+      .eq('user_id', user.value.id)
+      .single()
+
+    if (error) {
+      console.error('Error checking admin status:', error)
+      return false
+    }
+
+    if (companyMember) {
+      isCompanyAdmin.value = companyMember.role === 'admin'
+      currentCompany.value = companyMember.company
+      return companyMember.role === 'admin'
+    }
+    
+    return false
+  } catch (err) {
+    console.error('Error checking admin status:', err)
+    return false
+  }
+}
+
+// Fetch teams that the admin is part of (not all teams)
+const fetchAdminTeams = async () => {
+  if (!user.value || !currentCompany.value) return
+  
+  try {
+    // Get teams where the user is a member (admin can see teams they're part of)
+    const { data: teamMembers, error } = await client
+      .from('team_members')
+      .select(`
+        team_id,
+        team:teams(*)
+      `)
+      .eq('user_id', user.value.id)
+
+    if (error) throw error
+
+    const adminTeams = teamMembers
+      .filter(tm => tm.team && tm.team.company_id === currentCompany.value.id)
+      .map(tm => tm.team)
+
+    teams.value = adminTeams
+  } catch (err) {
+    console.error('Error fetching admin teams:', err)
+    teams.value = []
+  }
+}
 
 // Helper functions for time formatting
 const formatAvgCompletionTime = () => {
@@ -981,17 +1066,30 @@ const clearFilters = () => {
 // Load data on mount
 onMounted(async () => {
   if (user.value) {
-    // First fetch company data, then teams
-    const { data: companyMembers } = await client
-      .from('company_members')
-      .select('company_id')
-      .eq('user_id', user.value.id)
-      .single()
+    // First check if user is admin
+    const isAdmin = await checkAdminStatus()
     
-    if (companyMembers?.company_id) {
-      await fetchTeams(companyMembers.company_id)
+    if (isAdmin) {
+      // Fetch teams that the admin is part of
+      await fetchAdminTeams()
+      await loadAnalytics()
     }
-    await loadAnalytics()
+  }
+})
+
+// Watch for user authentication changes
+watch(user, async (newUser) => {
+  if (newUser) {
+    const isAdmin = await checkAdminStatus()
+    if (isAdmin) {
+      await fetchAdminTeams()
+      await loadAnalytics()
+    }
+  } else {
+    // User logged out, reset state
+    isCompanyAdmin.value = false
+    currentCompany.value = null
+    teams.value = []
   }
 })
 </script>

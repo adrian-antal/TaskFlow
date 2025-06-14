@@ -39,6 +39,7 @@
         <nav class="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
           <!-- Analytics Link -->
           <NuxtLink
+            v-if="isCompanyAdmin"
             to="/analytics"
             class="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/40 transition font-semibold shadow-sm"
           >
