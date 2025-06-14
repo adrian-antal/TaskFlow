@@ -37,6 +37,17 @@
 
         <!-- Navigation -->
         <nav class="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+          <!-- Analytics Link -->
+          <NuxtLink
+            to="/analytics"
+            class="flex items-center w-full px-4 py-3 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/40 transition font-semibold shadow-sm"
+          >
+            <svg class="w-5 h-5 mr-3 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Analytics
+          </NuxtLink>
+
           <!-- Company Link -->
           <NuxtLink
             to="/company"
@@ -128,7 +139,7 @@
           />
           <div class="ml-4 flex-1">
             <div class="flex items-center space-x-2">
-              <p class="text-base font-semibold text-gray-700 dark:text-gray-200">{{ userDisplayName }}</p>
+            <p class="text-base font-semibold text-gray-700 dark:text-gray-200">{{ userDisplayName }}</p>
               <span v-if="isCompanyAdmin" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Admin</span>
             </div>
             <button
@@ -495,6 +506,18 @@
                     >
                       You
                     </span>
+                    <!-- Time tracking indicator -->
+                    <span
+                      v-if="task.estimated_hours"
+                      class="px-1 py-0.5 text-2xs font-medium bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 rounded"
+                      :title="task.completed_at ? `Estimated: ${task.estimated_hours}h, Actual: ${calculateActualTime(task)}` : `Estimated: ${task.estimated_hours}h`"
+                    >
+                      <svg class="w-2 h-2 inline mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span v-if="task.completed_at">{{ calculateActualTime(task) }}</span>
+                      <span v-else>{{ task.estimated_hours }}h</span>
+                    </span>
                   </div>
                   <span class="text-2xs text-gray-400 ml-auto">{{ task.due_date }}</span>
                 </div>
@@ -507,7 +530,7 @@
                 Show All
               </button>
             </div>
-          </div>
+            </div>
           </div>
         </div>
 
@@ -1062,8 +1085,8 @@
               </div>
             </div>
 
-            <!-- Priority and Due Date -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Priority, Due Date, and Estimated Hours -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
                 <div class="mt-1 relative">
@@ -1104,6 +1127,25 @@
                   <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label for="estimatedHours" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Hours</label>
+                <div class="mt-1 relative">
+                  <input
+                    type="number"
+                    id="estimatedHours"
+                    v-model="newTask.estimatedHours"
+                    min="0"
+                    step="0.5"
+                    placeholder="e.g. 4"
+                    class="block w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                  />
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
@@ -1542,6 +1584,53 @@
                 </div>
               </div>
 
+              <!-- Estimated Hours -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estimated Hours</label>
+                <input
+                  v-model="selectedTask.estimated_hours"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  placeholder="e.g. 4"
+                  class="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Time will be automatically tracked based on when the task moves through different statuses.
+                </p>
+              </div>
+
+              <!-- Analytics Info (Read-only) -->
+              <div v-if="selectedTask.started_at || selectedTask.completed_at" class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Time Analytics</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div v-if="selectedTask.started_at">
+                    <span class="text-gray-500 dark:text-gray-400">Started:</span>
+                    <div class="font-medium">{{ new Date(selectedTask.started_at).toLocaleString() }}</div>
+                  </div>
+                  <div v-if="selectedTask.completed_at">
+                    <span class="text-gray-500 dark:text-gray-400">Completed:</span>
+                    <div class="font-medium">{{ new Date(selectedTask.completed_at).toLocaleString() }}</div>
+                  </div>
+                  <div v-if="selectedTask.completed_at">
+                    <span class="text-gray-500 dark:text-gray-400">Active Work Time:</span>
+                    <div class="font-medium">{{ calculateTotalTime(selectedTask) }}</div>
+                    <div class="text-xs text-gray-400">Time spent working</div>
+                  </div>
+                  <div v-if="selectedTask.estimated_hours">
+                    <span class="text-gray-500 dark:text-gray-400">Estimated:</span>
+                    <div class="font-medium">{{ selectedTask.estimated_hours }} hours</div>
+                  </div>
+                  <div v-if="selectedTask.completed_at && selectedTask.estimated_hours">
+                    <span class="text-gray-500 dark:text-gray-400">Variance:</span>
+                    <div class="font-medium" :class="getVarianceClass(selectedTask)">
+                      {{ calculateVariance(selectedTask) }}
+                    </div>
+                    <div class="text-xs text-gray-400">vs estimate</div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Description -->
               <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
@@ -1707,7 +1796,8 @@ const newTask = ref({
   priority: 'medium',
   dueDate: null,
   color: '#3B82F6', // Default blue color
-  assignee_id: null
+  assignee_id: null,
+  estimatedHours: null
 })
 
 const newTeam = ref({
@@ -1836,7 +1926,8 @@ const handleCreateTask = async () => {
       priority: newTask.value.priority,
       due_date: newTask.value.dueDate,
       color: newTask.value.color,
-      assignee_id: newTask.value.assignee_id
+      assignee_id: newTask.value.assignee_id,
+      estimated_hours: newTask.value.estimatedHours
     })
 
     if (task) {
@@ -1847,7 +1938,8 @@ const handleCreateTask = async () => {
         priority: 'medium',
         dueDate: null,
         color: '#3B82F6',
-        assignee_id: null
+        assignee_id: null,
+        estimatedHours: null
       }
       errorMessage.value = ''
     }
@@ -2074,7 +2166,8 @@ const handleUpdateTask = async () => {
       due_date: selectedTask.value.due_date,
       color: selectedTask.value.color,
       project_id: selectedTask.value.project_id,
-      assignee_id: selectedTask.value.assignee_id
+      assignee_id: selectedTask.value.assignee_id,
+      estimated_hours: selectedTask.value.estimated_hours
     }
 
     // Update the task
@@ -2305,7 +2398,7 @@ const filteredBoardTasks = computed(() => {
       filtered[task.status].push(task)
     }
   })
-  
+
   return filtered
 })
 
@@ -2347,16 +2440,8 @@ const handleDrop = async (event, newStatus) => {
   if (!task) return
 
   try {
-    // Update the task status in the database
-    const { error } = await client
-      .from('tasks')
-      .update({ status: newStatus })
-      .eq('id', task.id)
-
-    if (error) throw error
-
-    // Update the local state
-    task.status = newStatus
+    // Use the updateTask function from the composable to ensure proper timestamp handling
+    await updateTask(task.id, { status: newStatus })
 
     // Show success message
     successMessage.value = 'Task status updated successfully'
@@ -2447,6 +2532,121 @@ watch(() => boardViewFilters.value.assignee, (newAssignee) => {
     quickFilter.value = 'custom'
   }
 })
+
+// Helper function to calculate total time
+const calculateTotalTime = (task) => {
+  if (!task.started_at || !task.completed_at) return 'N/A'
+  
+  const start = new Date(task.started_at)
+  const end = new Date(task.completed_at)
+  const diffMs = end - start
+  const totalMinutes = Math.round(diffMs / (1000 * 60))
+  
+  if (totalMinutes < 60) {
+    return `${totalMinutes} minutes`
+  } else {
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    if (minutes === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`
+    } else {
+      return `${hours}h ${minutes}m`
+    }
+  }
+}
+
+// Calculate variance between estimated and actual time
+const calculateVariance = (task) => {
+  if (!task.estimated_hours || !task.started_at || !task.completed_at) return 'N/A'
+  
+  const start = new Date(task.started_at)
+  const end = new Date(task.completed_at)
+  const diffMs = end - start
+  const actualMinutes = Math.round(diffMs / (1000 * 60))
+  const estimatedMinutes = task.estimated_hours * 60
+  const varianceMinutes = actualMinutes - estimatedMinutes
+  
+  if (Math.abs(varianceMinutes) < 1) {
+    return 'On target'
+  }
+  
+  if (varianceMinutes > 0) {
+    if (varianceMinutes < 60) {
+      return `+${varianceMinutes}m over`
+    } else {
+      const hours = Math.floor(varianceMinutes / 60)
+      const minutes = varianceMinutes % 60
+      if (minutes === 0) {
+        return `+${hours}h over`
+      } else {
+        return `+${hours}h ${minutes}m over`
+      }
+    }
+  } else {
+    const absVariance = Math.abs(varianceMinutes)
+    if (absVariance < 60) {
+      return `${absVariance}m under`
+    } else {
+      const hours = Math.floor(absVariance / 60)
+      const minutes = absVariance % 60
+      if (minutes === 0) {
+        return `${hours}h under`
+      } else {
+        return `${hours}h ${minutes}m under`
+      }
+    }
+  }
+}
+
+// Get CSS class for variance display
+const getVarianceClass = (task) => {
+  if (!task.estimated_hours || !task.started_at || !task.completed_at) return ''
+  
+  const actualHours = calculateActualHours(task)
+  const variance = actualHours - task.estimated_hours
+  
+  if (variance > 0) {
+    return 'text-red-600 dark:text-red-400'
+  } else if (variance < 0) {
+    return 'text-green-600 dark:text-green-400'
+  } else {
+    return 'text-blue-600 dark:text-blue-400'
+  }
+}
+
+// Calculate actual hours from timestamps
+const calculateActualHours = (task) => {
+  if (!task.started_at || !task.completed_at) return 0
+  
+  const start = new Date(task.started_at)
+  const end = new Date(task.completed_at)
+  const diffMs = end - start
+  const diffHours = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10
+  
+  return diffHours
+}
+
+// Calculate actual time with minutes precision
+const calculateActualTime = (task) => {
+  if (!task.started_at || !task.completed_at) return 'N/A'
+  
+  const start = new Date(task.started_at)
+  const end = new Date(task.completed_at)
+  const diffMs = end - start
+  const totalMinutes = Math.round(diffMs / (1000 * 60))
+  
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m`
+  } else {
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    if (minutes === 0) {
+      return `${hours}h`
+    } else {
+      return `${hours}h ${minutes}m`
+    }
+  }
+}
 
 // Close sidebar when modals open
 watch([showNewTaskModal, showNewTeamModal, showNewProjectModal, showInviteTeamMemberModal, selectedTask, () => showAllModal.value.open], (values) => {

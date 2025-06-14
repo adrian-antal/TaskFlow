@@ -13,6 +13,46 @@ TaskFlow is a modern, responsive task management application built with Nuxt 3, 
 - ⚡ Real-time Updates
 - 🎨 Modern UI with Tailwind CSS
 
+## Time Tracking System
+
+TaskFlow automatically tracks time for tasks without requiring manual input. Here's how it works:
+
+### Automatic Timestamps
+
+- **Created**: When a task is first created
+- **Started**: When task status changes to "In Progress" (first time only)
+- **Completed**: When task status changes to "Done"
+
+### Time Calculations
+
+1. **Active Work Time** (`started_at` → `completed_at`)
+   - Time spent actively working on the task
+   - Shown in task details and board view
+   - Used for variance calculations against estimates
+
+2. **Total Lifecycle Time** (`created_at` → `completed_at`)
+   - Complete time from task creation to completion
+   - Includes waiting time before work started
+   - Used in analytics averages
+
+### Analytics Metrics
+
+- **Estimated vs Actual**: Compare estimated hours with active work time
+- **Variance Analysis**: Color-coded indicators showing over/under estimates
+- **Team Performance**: Average completion times and efficiency metrics
+- **Minute Precision**: All times displayed with minute-level accuracy (e.g., "2h 45m")
+
+### Example Timeline
+
+```
+Task Created → [2h waiting] → Started Work → [1h 30m active] → Completed
+|              |              |              |
+created_at     started_at     |              completed_at
+|                             |              |
+|<-- Total Lifecycle: 3h 30m ----------------->|
+               |<-- Active Work: 1h 30m ------>|
+```
+
 ## Tech Stack
 
 - **Frontend:**
@@ -25,73 +65,6 @@ TaskFlow is a modern, responsive task management application built with Nuxt 3, 
 - **Backend:**
   - Supabase (Authentication, Database, Real-time)
 
-## Getting Started
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/taskflow.git
-   cd taskflow
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env` file in the root directory with your Supabase credentials:
-   ```
-   SUPABASE_URL=your_supabase_url
-   SUPABASE_KEY=your_supabase_anon_key
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Database Setup
-
-1. Create a new Supabase project
-2. Create a `tasks` table with the following schema:
-   ```sql
-   create table tasks (
-     id uuid default uuid_generate_v4() primary key,
-     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-     title text not null,
-     description text,
-     status text not null,
-     due_date date not null,
-     user_id uuid references auth.users not null
-   );
-   ```
-
-3. Set up Row Level Security (RLS) policies:
-   ```sql
-   -- Enable RLS
-   alter table tasks enable row level security;
-
-   -- Create policy for users to view their own tasks
-   create policy "Users can view their own tasks"
-     on tasks for select
-     using (auth.uid() = user_id);
-
-   -- Create policy for users to insert their own tasks
-   create policy "Users can insert their own tasks"
-     on tasks for insert
-     with check (auth.uid() = user_id);
-
-   -- Create policy for users to update their own tasks
-   create policy "Users can update their own tasks"
-     on tasks for update
-     using (auth.uid() = user_id);
-
-   -- Create policy for users to delete their own tasks
-   create policy "Users can delete their own tasks"
-     on tasks for delete
-     using (auth.uid() = user_id);
-   ```
 
 ## Contributing
 
