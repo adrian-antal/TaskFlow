@@ -1,5 +1,16 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-primary-50 via-blue-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <!-- Demo Mode Banner (Portfolio) -->
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 text-center text-sm">
+      <div class="flex items-center justify-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>📊 Portfolio Demo - Advanced Analytics Dashboard | Built with Vue 3 + Nuxt 3 + Supabase</span>
+        
+      </div>
+    </div>
+
     <!-- Access Denied Message for Non-Admins -->
     <div v-if="!isCompanyAdmin" class="min-h-screen flex items-center justify-center">
       <div class="text-center">
@@ -84,13 +95,13 @@
         <!-- User Profile -->
         <div class="p-6 border-t border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 rounded-t-2xl shadow flex items-center mt-auto">
           <img
-            :src="user?.user_metadata?.avatar_url || 'https://ui-avatars.com/api/?name=' + user?.email"
+            :src="user?.user_metadata?.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userDisplayName)"
             class="w-10 h-10 rounded-full border-2 border-primary-200 shadow"
             alt="User avatar"
           />
           <div class="ml-4 flex-1">
             <div class="flex items-center space-x-2">
-              <p class="text-base font-semibold text-gray-700 dark:text-gray-200">{{ user?.email }}</p>
+              <p class="text-base font-semibold text-gray-700 dark:text-gray-200">{{ userDisplayName }}</p>
             </div>
             <button
               @click="handleLogout"
@@ -132,6 +143,22 @@
           
           <!-- Filters -->
           <div class="flex items-center space-x-4">
+            <!-- Export PDF Button -->
+            <button
+              @click="exportAsPDF"
+              :disabled="loading"
+              class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 rounded-lg transition-all duration-200 flex items-center shadow-md hover:shadow-lg transform hover:scale-105"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span v-if="loading">Generating...</span>
+              <span v-else>Export Report</span>
+              <svg v-if="!loading" class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3" />
+              </svg>
+            </button>
+            
             <select
               v-model="selectedTeam"
               @change="loadAnalytics"
@@ -172,6 +199,32 @@
 
         <!-- Analytics Content -->
         <div v-else class="space-y-6">
+          <!-- Suspicious Changes Alert -->
+          <div 
+            v-if="suspiciousChangesCount > 0" 
+            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+          >
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-red-600 dark:text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+              <div>
+                <h4 class="text-sm font-medium text-red-800 dark:text-red-200">
+                  {{ suspiciousChangesCount }} Suspicious Deadline Change{{ suspiciousChangesCount > 1 ? 's' : '' }} Detected
+                </h4>
+                <p class="text-sm text-red-700 dark:text-red-300 mt-1">
+                  Some task deadlines were extended after they were already overdue. Review the audit trail below for details.
+                </p>
+              </div>
+              <button 
+                @click="viewSuspiciousChanges"
+                class="ml-auto px-3 py-1 text-xs font-medium text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-800 hover:bg-red-200 dark:hover:bg-red-700 rounded-md transition-colors"
+              >
+                View Suspicious Changes
+              </button>
+            </div>
+          </div>
+
           <!-- Key Metrics Cards -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Total Tasks -->
@@ -370,9 +423,17 @@
             </div>
           </div>
 
-          <!-- Completion Trends -->
+                      <!-- Completion Trends -->
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Task Completion Trends</h3>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white">Task Completion Trends</h3>
+              <div class="flex items-center space-x-2">
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  Total completed: {{ completionTrends.reduce((sum, day) => sum + day.count, 0) }}
+                </span>
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+              </div>
+            </div>
             <div class="h-64 relative">
               <!-- SVG Line Chart -->
               <svg class="w-full h-full" viewBox="0 0 400 200" v-if="completionTrends.length > 0">
@@ -465,6 +526,7 @@
                     @change="currentPage = 1"
                     class="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
                   >
+                    <option :value="5">5 per page</option>
                     <option :value="10">10 per page</option>
                     <option :value="20">20 per page</option>
                     <option :value="50">50 per page</option>
@@ -683,9 +745,277 @@
               </div>
             </div>
           </div>
+
+          <!-- Deadline Changes Audit Trail -->
+          <div class="deadline-changes-audit bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Deadline Changes Audit</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Showing {{ auditShowingStart }} to {{ auditShowingEnd }} of {{ auditTotalCount }} changes
+                  </p>
+                </div>
+                <div class="flex items-center space-x-3">
+                  <!-- Items per page selector -->
+                  <select
+                    v-model="auditItemsPerPage"
+                    @change="fetchDeadlineChanges(1)"
+                    class="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
+                  >
+                    <option :value="5">5 per page</option>
+                    <option :value="10">10 per page</option>
+                    <option :value="20">20 per page</option>
+                    <option :value="50">50 per page</option>
+                    <option :value="100">100 per page</option>
+                  </select>
+                  
+                  <!-- Filter selector -->
+                  <select
+                    v-model="auditFilter"
+                    class="rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:text-white text-sm"
+                  >
+                    <option value="all">All Changes</option>
+                    <option value="suspicious">Suspicious Changes</option>
+                    <option value="recent">Recent Changes</option>
+                    <option value="resolved">Resolved Changes</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="loadingAudit" class="p-6 text-center">
+              <div class="flex items-center justify-center space-x-2">
+                <svg class="animate-spin h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-gray-600 dark:text-gray-400">Loading audit data...</span>
+              </div>
+            </div>
+            
+            <div v-else-if="filteredDeadlineChanges.length === 0" class="p-6 text-center text-gray-500 dark:text-gray-400">
+              No deadline changes found.
+            </div>
+            
+            <div v-else class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Task</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Changed By</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Old Deadline</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">New Deadline</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Changed On</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr 
+                    v-for="change in filteredDeadlineChanges" 
+                    :key="change.id"
+                    :class="{ 'bg-red-50 dark:bg-red-900/20': change.is_suspicious }"
+                  >
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div>
+                          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ change.task_title }}</div>
+                          <div class="text-sm text-gray-500 dark:text-gray-400">{{ change.project_name }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-gray-900 dark:text-white">{{ change.changed_by_name || change.changed_by_email }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-gray-900 dark:text-white">
+                        {{ change.old_due_date ? new Date(change.old_due_date).toLocaleDateString() : 'None' }}
+                      </div>
+                      <div v-if="change.was_overdue_when_changed" class="text-xs text-red-600 dark:text-red-400">
+                        (Was overdue)
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-gray-900 dark:text-white">
+                        {{ change.new_due_date ? new Date(change.new_due_date).toLocaleDateString() : 'None' }}
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {{ new Date(change.created_at).toLocaleString() }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span 
+                        v-if="change.is_resolved"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      >
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        Resolved
+                      </span>
+                      <span 
+                        v-else-if="change.is_suspicious"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                      >
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Suspicious
+                      </span>
+                      <span 
+                        v-else
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                      >
+                        Normal
+                      </span>
+                      <div v-if="change.is_resolved" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Resolved by {{ change.resolver?.name || change.resolver?.email }}
+                        <br>{{ new Date(change.resolved_at).toLocaleString() }}
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <button
+                        v-if="change.is_suspicious && !change.is_resolved"
+                        @click="openResolveModal(change)"
+                        class="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 rounded-md transition-colors"
+                      >
+                        Resolve
+                      </button>
+                      <span v-else-if="change.is_resolved" class="text-xs text-gray-400">
+                        —
+                      </span>
+                      <span v-else class="text-xs text-gray-400">
+                        —
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <!-- Pagination -->
+              <div v-if="auditTotalPages > 1" class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm text-gray-700 dark:text-gray-300">
+                    Showing <span class="font-medium">{{ auditShowingStart }}</span> to <span class="font-medium">{{ auditShowingEnd }}</span> of <span class="font-medium">{{ auditTotalCount }}</span> changes
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <button
+                      @click="prevAuditPage"
+                      :disabled="auditCurrentPage === 1"
+                      class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    
+                    <!-- Page numbers -->
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="page in Math.min(5, auditTotalPages)"
+                        :key="page"
+                        @click="goToAuditPage(page)"
+                        class="px-3 py-1 text-sm border rounded-md"
+                        :class="page === auditCurrentPage 
+                          ? 'bg-primary-600 text-white border-primary-600' 
+                          : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                      >
+                        {{ page }}
+                      </button>
+                      <span v-if="auditTotalPages > 5" class="text-gray-500">...</span>
+                    </div>
+                    
+                    <button
+                      @click="nextAuditPage"
+                      :disabled="auditCurrentPage === auditTotalPages"
+                      class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
+
+    <!-- Resolve Suspicious Change Modal -->
+    <div v-if="showResolveModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
+      <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-500 dark:from-blue-800 dark:to-indigo-700">
+          <h3 class="text-lg font-medium text-white">Resolve Suspicious Change</h3>
+          <button @click="closeResolveModal" class="text-white hover:text-gray-200 focus:outline-none">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+          <div v-if="selectedChangeToResolve" class="space-y-4">
+            <!-- Change Details -->
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <h4 class="font-medium text-gray-900 dark:text-white mb-2">Change Details</h4>
+              <div class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                <div><strong>Task:</strong> {{ selectedChangeToResolve.task_title }}</div>
+                <div><strong>Project:</strong> {{ selectedChangeToResolve.project_name }}</div>
+                <div><strong>Changed by:</strong> {{ selectedChangeToResolve.changed_by_name || selectedChangeToResolve.changed_by_email }}</div>
+                <div><strong>Old Due Date:</strong> {{ new Date(selectedChangeToResolve.old_due_date).toLocaleDateString() }}</div>
+                <div><strong>New Due Date:</strong> {{ new Date(selectedChangeToResolve.new_due_date).toLocaleDateString() }}</div>
+                <div><strong>Changed on:</strong> {{ new Date(selectedChangeToResolve.created_at).toLocaleString() }}</div>
+              </div>
+            </div>
+
+            <!-- Resolution Comment -->
+            <div>
+              <label for="resolutionComment" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Resolution Notes (Optional)
+              </label>
+              <textarea
+                id="resolutionComment"
+                v-model="resolutionComment"
+                rows="3"
+                class="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                placeholder="Add any notes about why this change is acceptable or what action was taken..."
+              ></textarea>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                This will help provide context for future reference and audits.
+              </p>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              @click="closeResolveModal"
+              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              :disabled="resolvingChange"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              @click="resolveChange"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center"
+              :disabled="resolvingChange"
+            >
+              <svg v-if="resolvingChange" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              {{ resolvingChange ? 'Resolving...' : 'Mark as Resolved' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     </div> <!-- End of admin-only content -->
   </div> <!-- End of main container -->
 </template>
@@ -695,7 +1025,7 @@ definePageMeta({
   layout: false
 })
 
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useSupabaseClient, useSupabaseUser } from '#imports'
 import { useAnalytics } from '~/composables/useAnalytics'
 import { useTeam } from '~/composables/useTeam'
@@ -998,14 +1328,663 @@ const dateRange = ref('30')
 
 // Pagination state
 const currentPage = ref(1)
-const tasksPerPage = ref(20)
+const tasksPerPage = ref(5)
 const showFilters = ref(false)
+
+// Export state - simplified to PDF only
+
+// Audit trail state
+const auditFilter = ref('all')
+const deadlineChanges = ref([])
+const loadingAudit = ref(false)
+
+// Pagination state for audit
+const auditCurrentPage = ref(1)
+const auditItemsPerPage = ref(5)
+const auditTotalCount = ref(0)
+
+// Resolution state
+const showResolveModal = ref(false)
+const selectedChangeToResolve = ref(null)
+const resolutionComment = ref('')
+const resolvingChange = ref(false)
+
+// User profile for display name
+const profile = ref(null)
+
+const userDisplayName = computed(() => {
+  if (!profile.value) return user.value?.email || ''
+  if (profile.value.full_name) return profile.value.full_name
+  if (profile.value.first_name || profile.value.last_name) return `${profile.value.first_name || ''} ${profile.value.last_name || ''}`.trim()
+  return profile.value.email || user.value?.email || ''
+})
 
 // Methods
 const handleLogout = async () => {
   await client.auth.signOut()
   navigateTo('/login')
 }
+
+// Export functionality - Professional PDF Reports
+const exportAsPDF = async () => {
+  try {
+    // Dynamic import for jsPDF to reduce bundle size
+    const jsPDF = (await import('jspdf')).default
+    await import('jspdf-autotable')
+    
+    const doc = new jsPDF()
+    
+    // Generate professional PDF report
+    await generateAnalyticsPDF(doc)
+    
+    // Download the PDF
+    doc.save(`TaskFlow-Analytics-Report-${new Date().toISOString().split('T')[0]}.pdf`)
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    console.log('Available data for PDF:', {
+      dashboardMetrics: dashboardMetrics.value,
+      statusDistribution: statusDistribution.value,
+      memberPerformance: memberPerformance.value,
+      recentTasks: recentCompletedTasks.value?.length
+    })
+    // Try alternative PDF generation
+    await generateComprehensivePDF()
+  }
+}
+
+const generateAnalyticsPDF = async (doc) => {
+  const pageWidth = doc.internal.pageSize.width
+  const pageHeight = doc.internal.pageSize.height
+  let yPosition = 20
+
+  console.log('Starting PDF generation with data:', {
+    metrics: dashboardMetrics.value,
+    status: statusDistribution.value,
+    team: memberPerformance.value,
+    tasks: recentCompletedTasks.value?.length
+  })
+
+  // Header with logo and title
+  doc.setFillColor(59, 130, 246) // Blue background
+  doc.rect(0, 0, pageWidth, 40, 'F')
+  
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(24)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TaskFlow Analytics Report', 20, 25)
+  
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })
+  doc.text(currentDate, pageWidth - 20, 25, { align: 'right' })
+  
+  // Add report period
+  doc.setFontSize(10)
+  doc.text(`Report Period: Last ${dateRange.value} days${selectedTeam.value ? ` | Team: ${teams.value.find(t => t.id === selectedTeam.value)?.name || 'Selected Team'}` : ''}`, 20, 35)
+  
+  yPosition = 60
+  doc.setTextColor(0, 0, 0)
+
+  // Executive Summary Section
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Executive Summary', 20, yPosition)
+  yPosition += 15
+
+  // Key Metrics Cards
+  const metrics = [
+    { label: 'Total Tasks', value: dashboardMetrics.value?.totalTasks || 0, color: [59, 130, 246] },
+    { label: 'Completed Tasks', value: dashboardMetrics.value?.completedTasks || 0, color: [34, 197, 94] },
+    { label: 'Overdue Tasks', value: dashboardMetrics.value?.overdueTasks || 0, color: [239, 68, 68] },
+    { label: 'Completion Rate', value: `${dashboardMetrics.value?.completionRate || 0}%`, color: [168, 85, 247] }
+  ]
+
+  const cardWidth = (pageWidth - 60) / 4
+  metrics.forEach((metric, index) => {
+    const x = 20 + (index * (cardWidth + 10))
+    
+    // Card background
+    doc.setFillColor(248, 250, 252)
+    doc.roundedRect(x, yPosition, cardWidth, 30, 3, 3, 'F')
+    
+    // Colored accent
+    doc.setFillColor(...metric.color)
+    doc.rect(x, yPosition, 3, 30, 'F')
+    
+    // Metric value
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...metric.color)
+    doc.text(metric.value.toString(), x + 8, yPosition + 12)
+    
+    // Metric label
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(100, 116, 139)
+    doc.text(metric.label, x + 8, yPosition + 22)
+  })
+
+  yPosition += 50
+
+  // Performance Insights Section
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text('Performance Insights', 20, yPosition)
+  yPosition += 10
+
+  // Average times
+  const avgCompletionTime = formatAvgCompletionTime()
+  const avgActiveTime = formatAvgActiveTime()
+  
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`• Average Total Completion Time: ${avgCompletionTime}`, 25, yPosition + 8)
+  doc.text(`• Average Active Work Time: ${avgActiveTime}`, 25, yPosition + 16)
+  doc.text(`• Suspicious Deadline Changes: ${suspiciousChangesCount.value}`, 25, yPosition + 24)
+
+  yPosition += 40
+
+  // Status Distribution Chart (as text table)
+  if (statusDistribution.value?.length > 0) {
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Task Status Distribution', 20, yPosition)
+    yPosition += 10
+
+    const statusData = statusDistribution.value.map(item => [
+      item.status.replace('_', ' ').toUpperCase(),
+      item.count.toString(),
+      `${item.percentage}%`
+    ])
+
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Status', 'Count', 'Percentage']],
+      body: statusData,
+      theme: 'grid',
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 30, halign: 'center' }
+      },
+      margin: { left: 20, right: 20 }
+    })
+
+    yPosition = doc.lastAutoTable.finalY + 20
+  }
+
+  // Team Performance Section
+  if (memberPerformance.value?.length > 0 && yPosition < pageHeight - 80) {
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Team Member Performance', 20, yPosition)
+    yPosition += 10
+
+    const teamData = memberPerformance.value.slice(0, 10).map(member => [
+      member.name,
+      member.totalTasks.toString(),
+      member.completedTasks.toString(),
+      `${member.completionRate}%`,
+      formatMemberAvgTime(member),
+      member.overdueTasks.toString()
+    ])
+
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Member', 'Total', 'Completed', 'Rate', 'Avg Time', 'Overdue']],
+      body: teamData,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 20, halign: 'center' },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' },
+        5: { cellWidth: 20, halign: 'center' }
+      },
+      margin: { left: 20, right: 20 }
+    })
+
+    yPosition = doc.lastAutoTable.finalY + 20
+  }
+
+  // Priority Distribution Chart
+  if (priorityDistribution.value?.length > 0 && yPosition < pageHeight - 60) {
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Priority Distribution', 20, yPosition)
+    yPosition += 10
+
+    const priorityData = priorityDistribution.value.map(item => [
+      item.priority.toUpperCase(),
+      item.count.toString(),
+      `${item.percentage}%`
+    ])
+
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Priority', 'Count', 'Percentage']],
+      body: priorityData,
+      theme: 'grid',
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [168, 85, 247], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 30, halign: 'center' }
+      },
+      margin: { left: 20, right: 20 }
+    })
+
+    yPosition = doc.lastAutoTable.finalY + 20
+  }
+
+  // Completion Trends Analysis
+  if (completionTrends.value?.length > 0 && yPosition < pageHeight - 60) {
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Task Completion Trends (Last 14 Days)', 20, yPosition)
+    yPosition += 10
+
+    const trendsData = completionTrends.value.slice(-14).map(trend => [
+      new Date(trend.date).toLocaleDateString(),
+      trend.count.toString()
+    ])
+
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Date', 'Tasks Completed']],
+      body: trendsData,
+      theme: 'striped',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [34, 197, 94], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 40, halign: 'center' }
+      },
+      margin: { left: 20, right: 20 }
+    })
+
+    yPosition = doc.lastAutoTable.finalY + 20
+  }
+
+  // Add new page for detailed task data
+  if (recentCompletedTasks.value?.length > 0) {
+    doc.addPage()
+    yPosition = 20
+
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Recent Completed Tasks Analysis', 20, yPosition)
+    yPosition += 15
+
+    // Add summary stats
+    const totalEstimated = recentCompletedTasks.value.reduce((sum, task) => sum + (task.estimated_hours || 0), 0)
+    const totalActual = recentCompletedTasks.value.reduce((sum, task) => sum + (task.active_minutes_to_complete ? task.active_minutes_to_complete / 60 : 0), 0)
+    const variance = totalActual - totalEstimated
+    
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Total Tasks Analyzed: ${recentCompletedTasks.value.length}`, 25, yPosition)
+    doc.text(`Total Estimated Time: ${totalEstimated.toFixed(1)} hours`, 25, yPosition + 8)
+    doc.text(`Total Actual Time: ${totalActual.toFixed(1)} hours`, 25, yPosition + 16)
+    doc.text(`Overall Variance: ${variance > 0 ? '+' : ''}${variance.toFixed(1)} hours`, 25, yPosition + 24)
+    
+    yPosition += 40
+
+    const taskData = recentCompletedTasks.value.slice(0, 25).map(task => [
+      task.title.length > 25 ? task.title.substring(0, 25) + '...' : task.title,
+      task.project_name || 'N/A',
+      task.assignee_name || 'Unassigned',
+      task.priority?.toUpperCase() || 'N/A',
+      task.estimated_hours ? `${task.estimated_hours}h` : 'N/A',
+      task.active_minutes_to_complete ? formatTimeWithMinutes(task.active_minutes_to_complete) : 'N/A',
+      formatTaskVariance(task),
+      task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'
+    ])
+
+    doc.autoTable({
+      startY: yPosition,
+      head: [['Task', 'Project', 'Assignee', 'Priority', 'Est.', 'Actual', 'Variance', 'Completed']],
+      body: taskData,
+      theme: 'striped',
+      styles: { fontSize: 6, cellPadding: 1.5 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 15 },
+        4: { cellWidth: 12 },
+        5: { cellWidth: 15 },
+        6: { cellWidth: 20 },
+        7: { cellWidth: 20 }
+      },
+      margin: { left: 20, right: 20 }
+    })
+  }
+
+  // Suspicious Activity Analysis (if any)
+  if (suspiciousChangesCount.value > 0) {
+    const currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY : yPosition
+    if (currentY > pageHeight - 100) {
+      doc.addPage()
+      yPosition = 20
+    } else {
+      yPosition = currentY + 20
+    }
+
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(239, 68, 68) // Red color for warnings
+    doc.text('⚠️ Suspicious Activity Detected', 20, yPosition)
+    
+    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`${suspiciousChangesCount.value} suspicious deadline changes require review.`, 25, yPosition + 10)
+    doc.text('These changes were made after tasks were already overdue.', 25, yPosition + 18)
+    doc.text('Please review the audit trail in the dashboard for details.', 25, yPosition + 26)
+  }
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8)
+    doc.setTextColor(128, 128, 128)
+    doc.text(
+      `Generated by TaskFlow Analytics | Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 10,
+      { align: 'center' }
+    )
+  }
+}
+
+const generateComprehensivePDF = async () => {
+  // Comprehensive PDF generation using browser's print capabilities
+  const printWindow = window.open('', '_blank')
+  
+  // Generate comprehensive HTML report
+  const statusRows = statusDistribution.value?.map(item => 
+    `<tr><td>${item.status.replace('_', ' ').toUpperCase()}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`
+  ).join('') || '<tr><td colspan="3">No data available</td></tr>'
+  
+  const priorityRows = priorityDistribution.value?.map(item => 
+    `<tr><td>${item.priority.toUpperCase()}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`
+  ).join('') || '<tr><td colspan="3">No data available</td></tr>'
+  
+  const teamRows = memberPerformance.value?.slice(0, 10).map(member => 
+    `<tr>
+      <td>${member.name}</td>
+      <td>${member.totalTasks}</td>
+      <td>${member.completedTasks}</td>
+      <td>${member.completionRate}%</td>
+      <td>${formatMemberAvgTime(member)}</td>
+      <td>${member.overdueTasks}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="6">No team data available</td></tr>'
+  
+  const taskRows = recentCompletedTasks.value?.slice(0, 15).map(task => 
+    `<tr>
+      <td>${task.title.length > 30 ? task.title.substring(0, 30) + '...' : task.title}</td>
+      <td>${task.project_name || 'N/A'}</td>
+      <td>${task.assignee_name || 'Unassigned'}</td>
+      <td>${task.priority?.toUpperCase() || 'N/A'}</td>
+      <td>${task.estimated_hours ? task.estimated_hours + 'h' : 'N/A'}</td>
+      <td>${task.active_minutes_to_complete ? formatTimeWithMinutes(task.active_minutes_to_complete) : 'N/A'}</td>
+      <td>${formatTaskVariance(task)}</td>
+      <td>${task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'N/A'}</td>
+    </tr>`
+  ).join('') || '<tr><td colspan="8">No completed tasks available</td></tr>'
+  
+  const trendsRows = completionTrends.value?.slice(-10).map(trend => 
+    `<tr><td>${new Date(trend.date).toLocaleDateString()}</td><td>${trend.count}</td></tr>`
+  ).join('') || '<tr><td colspan="2">No trend data available</td></tr>'
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>TaskFlow Analytics Report</title>
+        <style>
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+          }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            line-height: 1.4; 
+            color: #1f2937;
+          }
+          .header { 
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
+            color: white; 
+            padding: 30px; 
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+          .header p { margin: 10px 0 0 0; font-size: 14px; opacity: 0.9; }
+          .container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+          .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            margin: 30px 0; 
+          }
+          .metric-card { 
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0); 
+            padding: 20px; 
+            border-radius: 12px; 
+            border-left: 5px solid #3b82f6; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .metric-value { font-size: 24px; font-weight: 700; color: #1e40af; margin-bottom: 5px; }
+          .metric-label { font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+          .section { margin: 40px 0; }
+          .section-title { 
+            font-size: 20px; 
+            font-weight: 700; 
+            margin-bottom: 20px; 
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+          }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 20px 0; 
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+          th { 
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
+            color: white; 
+            padding: 12px 8px; 
+            font-weight: 600; 
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          td { 
+            border-bottom: 1px solid #e2e8f0; 
+            padding: 10px 8px; 
+            font-size: 12px;
+          }
+          tr:hover { background-color: #f8fafc; }
+          .insights { 
+            background: linear-gradient(135deg, #fef3c7, #fed7aa); 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin: 20px 0;
+            border-left: 5px solid #f59e0b;
+          }
+          .warning { 
+            background: linear-gradient(135deg, #fef2f2, #fee2e2); 
+            padding: 20px; 
+            border-radius: 12px; 
+            border-left: 5px solid #ef4444;
+            margin: 20px 0;
+          }
+          .footer { 
+            text-align: center; 
+            padding: 20px; 
+            color: #64748b; 
+            font-size: 12px; 
+            border-top: 1px solid #e2e8f0;
+            margin-top: 40px;
+          }
+          .print-btn { 
+            background: #3b82f6; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 14px;
+            margin: 20px 0;
+          }
+          .print-btn:hover { background: #1d4ed8; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>📊 TaskFlow Analytics Report</h1>
+          <p>Generated on ${new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}</p>
+          <p>Report Period: Last ${dateRange.value} days${selectedTeam.value ? ` | Team: ${teams.value.find(t => t.id === selectedTeam.value)?.name || 'Selected Team'}` : ''}</p>
+        </div>
+
+        <div class="container">
+          <button class="print-btn no-print" onclick="window.print()">🖨️ Print/Save as PDF</button>
+          
+          <div class="section">
+            <h2 class="section-title">📈 Executive Summary</h2>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-value">${dashboardMetrics.value?.totalTasks || 0}</div>
+                <div class="metric-label">Total Tasks</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">${dashboardMetrics.value?.completedTasks || 0}</div>
+                <div class="metric-label">Completed Tasks</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">${dashboardMetrics.value?.overdueTasks || 0}</div>
+                <div class="metric-label">Overdue Tasks</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">${dashboardMetrics.value?.completionRate || 0}%</div>
+                <div class="metric-label">Completion Rate</div>
+              </div>
+            </div>
+            
+            <div class="insights">
+              <strong>📊 Performance Insights:</strong><br>
+              • Average Total Completion Time: ${formatAvgCompletionTime()}<br>
+              • Average Active Work Time: ${formatAvgActiveTime()}<br>
+              • Tasks Analyzed: ${recentCompletedTasks.value?.length || 0}<br>
+              ${suspiciousChangesCount.value > 0 ? `• ⚠️ Suspicious Deadline Changes: ${suspiciousChangesCount.value}` : '• ✅ No suspicious activity detected'}
+            </div>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">📊 Task Status Distribution</h2>
+            <table>
+              <thead>
+                <tr><th>Status</th><th>Count</th><th>Percentage</th></tr>
+              </thead>
+              <tbody>${statusRows}</tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">🎯 Priority Distribution</h2>
+            <table>
+              <thead>
+                <tr><th>Priority</th><th>Count</th><th>Percentage</th></tr>
+              </thead>
+              <tbody>${priorityRows}</tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">📈 Completion Trends (Last 10 Days)</h2>
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Tasks Completed</th></tr>
+              </thead>
+              <tbody>${trendsRows}</tbody>
+            </table>
+          </div>
+
+          <div class="section page-break">
+            <h2 class="section-title">👥 Team Performance Analysis</h2>
+            <table>
+              <thead>
+                <tr><th>Member</th><th>Total</th><th>Completed</th><th>Rate</th><th>Avg Time</th><th>Overdue</th></tr>
+              </thead>
+              <tbody>${teamRows}</tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">✅ Recent Completed Tasks</h2>
+            <table>
+              <thead>
+                <tr><th>Task</th><th>Project</th><th>Assignee</th><th>Priority</th><th>Est.</th><th>Actual</th><th>Variance</th><th>Completed</th></tr>
+              </thead>
+              <tbody>${taskRows}</tbody>
+            </table>
+          </div>
+
+          ${suspiciousChangesCount.value > 0 ? `
+          <div class="section">
+            <div class="warning">
+              <h3>⚠️ Suspicious Activity Alert</h3>
+              <p><strong>${suspiciousChangesCount.value} suspicious deadline changes</strong> were detected in this reporting period.</p>
+              <p>These changes were made after tasks were already overdue. Please review the audit trail in the TaskFlow dashboard for detailed analysis and resolution.</p>
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>Generated by TaskFlow Analytics Dashboard | ${new Date().toLocaleString()}</p>
+            <p>This report contains ${recentCompletedTasks.value?.length || 0} completed tasks and ${memberPerformance.value?.length || 0} team members</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `)
+  printWindow.document.close()
+  
+  // Auto-focus and show print dialog
+  printWindow.focus()
+  setTimeout(() => {
+    printWindow.print()
+  }, 500)
+}
+
+
 
 const loadAnalytics = async () => {
   try {
@@ -1023,7 +2002,11 @@ const loadAnalytics = async () => {
     filters.dateFrom = startDate.toISOString()
     filters.dateTo = endDate.toISOString()
     
-    await fetchTaskAnalytics(filters)
+    // Fetch both analytics and deadline changes
+    await Promise.all([
+      fetchTaskAnalytics(filters),
+      fetchDeadlineChanges()
+    ])
   } catch (err) {
     console.error('Error loading analytics:', err)
   }
@@ -1034,6 +2017,7 @@ watch(selectedTeam, async (newTeam, oldTeam) => {
   if (newTeam !== oldTeam) {
     // Immediately clear task data to prevent showing old team's data
     taskAnalytics.value = []
+    deadlineChanges.value = []
     
     // Clear other filters when team changes
     selectedProject.value = ''
@@ -1054,6 +2038,20 @@ watch(dateRange, async (newRange, oldRange) => {
   }
 })
 
+// Watch for audit filter changes
+watch(auditFilter, async () => {
+  // When filter changes, go back to page 1
+  if (auditCurrentPage.value !== 1) {
+    await fetchDeadlineChanges(1)
+  }
+})
+
+// Watch for audit items per page changes
+watch(auditItemsPerPage, async () => {
+  // When items per page changes, go back to page 1
+  await fetchDeadlineChanges(1)
+})
+
 const clearFilters = () => {
   selectedTeam.value = ''
   selectedProject.value = ''
@@ -1063,9 +2061,306 @@ const clearFilters = () => {
   currentPage.value = 1
 }
 
+// Computed property for filtered deadline changes
+const filteredDeadlineChanges = computed(() => {
+  if (!deadlineChanges.value) return []
+  
+  let filtered = deadlineChanges.value
+  
+  if (auditFilter.value === 'suspicious') {
+    // Only show unresolved suspicious changes
+    filtered = filtered.filter(change => change.is_suspicious && !change.is_resolved)
+  } else if (auditFilter.value === 'recent') {
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    filtered = filtered.filter(change => new Date(change.created_at) >= sevenDaysAgo)
+  } else if (auditFilter.value === 'resolved') {
+    // Show only resolved changes
+    filtered = filtered.filter(change => change.is_resolved)
+  }
+  
+  return filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+})
+
+// Computed property for suspicious changes count (only unresolved)
+const suspiciousChangesCount = computed(() => {
+  return deadlineChanges.value.filter(change => change.is_suspicious && !change.is_resolved).length
+})
+
+// Computed properties for audit pagination
+const auditTotalPages = computed(() => {
+  return Math.ceil(auditTotalCount.value / auditItemsPerPage.value)
+})
+
+const auditShowingStart = computed(() => {
+  return (auditCurrentPage.value - 1) * auditItemsPerPage.value + 1
+})
+
+const auditShowingEnd = computed(() => {
+  return Math.min(auditCurrentPage.value * auditItemsPerPage.value, auditTotalCount.value)
+})
+
+// Functions for audit pagination
+const goToAuditPage = (page) => {
+  if (page >= 1 && page <= auditTotalPages.value) {
+    fetchDeadlineChanges(page)
+  }
+}
+
+const nextAuditPage = () => {
+  if (auditCurrentPage.value < auditTotalPages.value) {
+    goToAuditPage(auditCurrentPage.value + 1)
+  }
+}
+
+const prevAuditPage = () => {
+  if (auditCurrentPage.value > 1) {
+    goToAuditPage(auditCurrentPage.value - 1)
+  }
+}
+
+// Function to scroll to audit section and apply suspicious filter
+const viewSuspiciousChanges = () => {
+  // Apply the suspicious filter
+  auditFilter.value = 'suspicious'
+  
+  // Scroll to the audit section with smooth animation
+  nextTick(() => {
+    const auditSection = document.querySelector('.deadline-changes-audit')
+    if (auditSection) {
+      auditSection.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      })
+    }
+  })
+}
+
+// Resolution functions
+const openResolveModal = (change) => {
+  selectedChangeToResolve.value = change
+  resolutionComment.value = ''
+  showResolveModal.value = true
+}
+
+const closeResolveModal = () => {
+  showResolveModal.value = false
+  selectedChangeToResolve.value = null
+  resolutionComment.value = ''
+}
+
+const resolveChange = async () => {
+  if (!selectedChangeToResolve.value) return
+  
+  try {
+    resolvingChange.value = true
+    
+    const { error } = await client
+      .from('task_activities')
+      .update({
+        is_resolved: true,
+        resolved_by: user.value.id,
+        resolved_at: new Date().toISOString(),
+        resolution_comment: resolutionComment.value.trim() || null
+      })
+      .eq('id', selectedChangeToResolve.value.id)
+    
+    if (error) throw error
+    
+    // Refresh the deadline changes data
+    await fetchDeadlineChanges(auditCurrentPage.value)
+    
+    // Close modal
+    closeResolveModal()
+    
+    // Show success message briefly
+    
+  } catch (err) {
+    console.error('Error resolving change:', err)
+    // Handle error - could show error toast
+  } finally {
+    resolvingChange.value = false
+  }
+}
+
+// Fetch deadline changes audit data
+const fetchDeadlineChanges = async (page = 1) => {
+  try {
+    loadingAudit.value = true
+    
+    // Calculate offset for pagination
+    const offset = (page - 1) * auditItemsPerPage.value
+    
+    // First, get the total count for pagination
+    const { count, error: countError } = await client
+      .from('task_activities')
+      .select('*', { count: 'exact', head: true })
+      .eq('action', 'due_date_changed')
+    
+    if (countError) throw countError
+    
+    auditTotalCount.value = count || 0
+    
+    // Get the basic task activities for due date changes with pagination
+    const { data: activities, error } = await client
+      .from('task_activities')
+      .select('id, task_id, user_id, action, details, created_at, is_resolved, resolved_by, resolved_at, resolution_comment')
+      .eq('action', 'due_date_changed')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + auditItemsPerPage.value - 1)
+
+    if (error) throw error
+
+    console.log(`Raw task activities (page ${page}):`, activities)
+
+    if (!activities || activities.length === 0) {
+      deadlineChanges.value = []
+      return
+    }
+
+    // Get unique task IDs and user IDs to fetch related data
+    const taskIds = [...new Set(activities.map(a => a.task_id))]
+    const userIds = [...new Set(activities.map(a => a.user_id))]
+    
+    // Also include users who resolved changes
+    const resolverIds = activities
+      .filter(a => a.resolved_by)
+      .map(a => a.resolved_by)
+    
+    const allUserIds = [...new Set([...userIds, ...resolverIds])]
+
+    // Fetch task details
+    const { data: tasks, error: tasksError } = await client
+      .from('tasks')
+      .select('id, title, project_id, project:projects(name)')
+      .in('id', taskIds)
+
+    if (tasksError) throw tasksError
+
+    // Fetch user details
+    const { data: users, error: usersError } = await client
+      .from('profiles')
+      .select('id, full_name, first_name, last_name, email')
+      .in('id', allUserIds)
+
+    if (usersError) throw usersError
+
+    console.log('Tasks:', tasks)
+    console.log('Users:', users)
+
+    // Create lookup maps
+    const taskMap = tasks.reduce((acc, task) => {
+      acc[task.id] = task
+      return acc
+    }, {})
+
+    const userMap = users.reduce((acc, user) => {
+      acc[user.id] = user
+      return acc
+    }, {})
+
+    // Apply team filter if selected
+    let filteredActivities = activities
+    if (selectedTeam.value) {
+      // Get project IDs for the selected team
+      const { data: teamProjects } = await client
+        .from('projects')
+        .select('id')
+        .eq('team_id', selectedTeam.value)
+      
+      if (teamProjects && teamProjects.length > 0) {
+        const projectIds = teamProjects.map(p => p.id)
+        filteredActivities = activities.filter(activity => {
+          const task = taskMap[activity.task_id]
+          return task && projectIds.includes(task.project_id)
+        })
+      } else {
+        deadlineChanges.value = []
+        auditTotalCount.value = 0
+        return
+      }
+    }
+
+    // Process the data to add audit information
+    const processedChanges = filteredActivities.map(change => {
+      const task = taskMap[change.task_id]
+      const user = userMap[change.user_id]
+      
+      // Get old and new due dates from the details object
+      const oldDueDate = change.details?.old_value || change.details?.from_due_date
+      const newDueDate = change.details?.new_value || change.details?.to_due_date
+      const changeDate = new Date(change.created_at)
+      
+      // Check if the change was made after the original deadline passed (suspicious)
+      let isSuspicious = false
+      let wasOverdueWhenChanged = false
+      
+      if (oldDueDate) {
+        const originalDeadline = new Date(oldDueDate)
+        wasOverdueWhenChanged = changeDate > originalDeadline
+        
+        // Consider it suspicious if:
+        // 1. The deadline was changed after it was already overdue, AND
+        // 2. The new deadline is later than the old one (extending deadline), AND
+        // 3. It hasn't been resolved yet
+        if (wasOverdueWhenChanged && newDueDate && new Date(newDueDate) > originalDeadline && !change.is_resolved) {
+          isSuspicious = true
+        }
+      }
+
+      // Get resolver information if resolved
+      let resolverInfo = null
+      if (change.is_resolved && change.resolved_by) {
+        const resolver = userMap[change.resolved_by]
+        resolverInfo = {
+          name: resolver?.full_name || 
+                (resolver?.first_name && resolver?.last_name 
+                  ? `${resolver.first_name} ${resolver.last_name}` 
+                  : null),
+          email: resolver?.email
+        }
+      }
+      
+      return {
+        ...change,
+        task_title: task?.title || 'Unknown Task',
+        project_name: task?.project?.name || 'Unknown Project',
+        changed_by_name: user?.full_name || 
+                        (user?.first_name && user?.last_name 
+                          ? `${user.first_name} ${user.last_name}` 
+                          : null),
+        changed_by_email: user?.email,
+        old_due_date: oldDueDate,
+        new_due_date: newDueDate,
+        is_suspicious: isSuspicious,
+        was_overdue_when_changed: wasOverdueWhenChanged,
+        resolver: resolverInfo
+      }
+    })
+
+    console.log('Processed changes:', processedChanges)
+    deadlineChanges.value = processedChanges
+    auditCurrentPage.value = page
+  } catch (err) {
+    console.error('Error fetching deadline changes:', err)
+    deadlineChanges.value = []
+    auditTotalCount.value = 0
+  } finally {
+    loadingAudit.value = false
+  }
+}
+
 // Load data on mount
 onMounted(async () => {
   if (user.value) {
+    // Fetch user profile for display name
+    const { data, error } = await client
+      .from('profiles')
+      .select('full_name, first_name, last_name, email')
+      .eq('id', user.value.id)
+      .single()
+    if (!error) profile.value = data
+
     // First check if user is admin
     const isAdmin = await checkAdminStatus()
     
@@ -1077,9 +2372,19 @@ onMounted(async () => {
   }
 })
 
+
+
 // Watch for user authentication changes
 watch(user, async (newUser) => {
   if (newUser) {
+    // Fetch user profile for display name
+    const { data, error } = await client
+      .from('profiles')
+      .select('full_name, first_name, last_name, email')
+      .eq('id', newUser.id)
+      .single()
+    if (!error) profile.value = data
+
     const isAdmin = await checkAdminStatus()
     if (isAdmin) {
       await fetchAdminTeams()
@@ -1087,6 +2392,7 @@ watch(user, async (newUser) => {
     }
   } else {
     // User logged out, reset state
+    profile.value = null
     isCompanyAdmin.value = false
     currentCompany.value = null
     teams.value = []
@@ -1105,6 +2411,21 @@ watch(user, async (newUser) => {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 </style> 

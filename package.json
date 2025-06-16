@@ -16,6 +16,8 @@
     "@vuepic/vue-datepicker": "^11.0.2",
     "@vueuse/core": "^10.3.0",
     "@vueuse/nuxt": "^10.3.0",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "nuxt": "^3.6.5",
     "pinia": "^2.1.4",
     "vue": "^3.3.4",

@@ -264,7 +264,7 @@
 </template>
 
 <script setup>
-// Use no layout for signup page since it has its own design
+
 definePageMeta({
   layout: false
 })

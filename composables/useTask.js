@@ -381,16 +381,21 @@ export const useTask = () => {
   // Helper function to log task activities
   const logTaskActivity = async (taskId, action, activityData) => {
     try {
+      // Store all the activity data in the details jsonb column
+      const details = {
+        ...activityData.details,
+        field_changed: activityData.field_changed,
+        old_value: activityData.old_value,
+        new_value: activityData.new_value
+      }
+
       await client
         .from('task_activities')
         .insert({
           task_id: taskId,
           user_id: user.value.id,
           action: action,
-          field_changed: activityData.field_changed || null,
-          old_value: activityData.old_value || null,
-          new_value: activityData.new_value || null,
-          details: activityData.details || {}
+          details: details
         })
     } catch (err) {
       console.error('Error logging task activity:', err)

@@ -1,5 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-primary-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden">
+  <div class="min-h-screen bg-gradient-to-br from-primary-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 relative overflow-hidden py-12">
+
+
     <!-- Simple Logo Header -->
     <div class="absolute top-6 left-6 z-50">
       <NuxtLink to="/" class="flex items-center space-x-3 group">
@@ -29,10 +31,10 @@
       <div class="absolute bottom-20 right-20 w-5 h-5 bg-purple-400/30 rotate-45 animate-float-delayed"></div>
     </div>
 
-    <div class="max-w-md w-full space-y-8 relative z-10">
+    <div class="max-w-lg w-full space-y-10 relative z-10">
       <!-- Logo and Header -->
       <div class="text-center">
-        <div class="flex justify-center mb-6">
+        <div class="flex justify-center mb-8">
           <div class="relative">
             <div class="absolute inset-0 bg-gradient-to-r from-primary-600 to-blue-500 rounded-full blur-lg opacity-75 animate-pulse"></div>
             <img src="/task-flow-logo.png" alt="TaskFlow Logo" class="relative h-16 w-16 rounded-full shadow-2xl border-4 border-white dark:border-gray-800 bg-white" />
@@ -44,12 +46,14 @@
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           Welcome back
         </h2>
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          Don't have an account?
-          <NuxtLink to="/signup" class="font-semibold text-primary-600 hover:text-primary-500 transition-colors duration-200">
-            Sign up here
-          </NuxtLink>
-        </p>
+        
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Don't have an account?
+            <NuxtLink to="/signup" class="font-semibold text-primary-600 hover:text-primary-500 transition-colors duration-200">
+              Sign up here
+            </NuxtLink>
+          </p>
+       
       </div>
 
       <!-- Main Login Card -->
@@ -146,12 +150,60 @@
             </div>
           </form>
 
-          <!-- Additional Options -->
+          <!-- Demo Login Options -->
           <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <div class="text-center">
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                Secure login powered by Supabase
-              </p>
+            <div class="space-y-4">
+              <div class="text-center">
+                <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                  🎭 Portfolio Demo - Try Different Roles
+                </p>
+              </div>
+              
+              <div class="grid grid-cols-1 gap-3">
+                <!-- Admin Demo Button -->
+                <button
+                  @click="loginAsDemo('admin')"
+                  :disabled="loading"
+                  class="group relative w-full flex items-center justify-center py-2.5 px-4 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
+                >
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span class="flex-1">Demo as Admin</span>
+                  <span class="text-xs bg-emerald-200 dark:bg-emerald-800 px-2 py-0.5 rounded-full">
+                    Full Access
+                  </span>
+                </button>
+
+                <!-- Member Demo Button -->
+                <button
+                  @click="loginAsDemo('member')"
+                  :disabled="loading"
+                  class="group relative w-full flex items-center justify-center py-2.5 px-4 border-2 border-blue-200 dark:border-blue-800 rounded-xl text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] hover:shadow-lg"
+                >
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span class="flex-1">Demo as Member</span>
+                  <span class="text-xs bg-blue-200 dark:bg-blue-800 px-2 py-0.5 rounded-full">
+                    Limited Access
+                  </span>
+                </button>
+              </div>
+
+              <div class="text-center pt-2">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  🚀 Experience different permission levels instantly
+                </p>
+              </div>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div class="text-center">
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Secure login powered by Supabase
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -169,7 +221,7 @@
 </template>
 
 <script setup>
-// Use no layout for login page since it has its own design
+
 definePageMeta({
   layout: false
 })
@@ -207,6 +259,57 @@ const handleLogin = async () => {
     router.push('/dashboard')
   } catch (e) {
     error.value = e.message
+  } finally {
+    loading.value = false
+  }
+}
+
+// Demo login functionality
+const loginAsDemo = async (role) => {
+  try {
+    loading.value = true
+    error.value = ''
+    
+    // Demo credentials
+    const demoCredentials = {
+      admin: {
+        email: 'adrianantal1@yahoo.com',
+        password: 'deltora1'
+      },
+      member: {
+        email: 'harjinder_sokhi@hotmail.com', 
+        password: 'tinkerbell1'
+      }
+    }
+    
+    const credentials = demoCredentials[role]
+    
+    if (!credentials) {
+      throw new Error('Invalid demo role')
+    }
+    
+    // Auto-fill the form fields for visual feedback
+    email.value = credentials.email
+    password.value = credentials.password
+    
+    // Wait a moment for visual feedback
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    const { error: signInError } = await client.auth.signInWithPassword(credentials)
+
+    if (signInError) throw signInError
+    
+    // Navigate based on role
+    if (role === 'admin') {
+      router.push('/analytics') // Direct to analytics for admin demo
+    } else {
+      router.push('/dashboard') // Regular dashboard for member
+    }
+  } catch (e) {
+    error.value = e.message || 'Demo login failed. Please try the manual login.'
+    // Clear the demo credentials on error
+    email.value = ''
+    password.value = ''
   } finally {
     loading.value = false
   }
@@ -250,7 +353,7 @@ const handleLogin = async () => {
   backdrop-filter: blur(4px);
 }
 
-/* Smooth transitions for all interactive elements */
+
 input:focus {
   transform: translateY(-1px);
 }
@@ -259,12 +362,12 @@ button:hover:not(:disabled) {
   box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
 }
 
-/* Enhanced focus states */
+
 input:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-/* Mobile optimizations */
+
 @media (max-width: 640px) {
   .backdrop-blur-xl {
     backdrop-filter: blur(12px);

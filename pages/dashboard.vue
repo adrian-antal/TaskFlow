@@ -445,92 +445,132 @@
           </div>
 
           <!-- Board Columns -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
-          <div
-            v-for="status in taskStatuses"
-            :key="status.id"
-            class="bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col"
-            @dragover.prevent
-            @drop.prevent="handleDrop($event, status.id)"
-          >
-            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 class="text-sm font-medium text-gray-700 dark:text-gray-200">
-                {{ status.name }}
-                <span class="ml-2 text-gray-500 dark:text-gray-400">
-                  ({{ filteredBoardTasks[status.id]?.length || 0 }})
-                </span>
-              </h3>
-            </div>
-            <div class="p-4 space-y-4 overflow-y-auto" :style="{ maxHeight: '420px' }">
-              <div
-                v-for="(task, idx) in (filteredBoardTasks[status.id] || []).slice(0, 6)"
-                :key="task.id"
-                class="px-2 py-1.5 rounded-lg cursor-move hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700 text-xs flex flex-col gap-1"
-                :style="{ backgroundColor: task.color ? (task.color + '22') : (status.id === 'todo' ? '#e3eafe' : status.id === 'in_progress' ? '#fef9e3' : status.id === 'review' ? '#f3e3fe' : status.id === 'done' ? '#e3fee7' : '#fff') }"
-                @click="selectedTask = task"
-                draggable="true"
-                @dragstart="handleDragStart($event, task)"
-                @dragend="handleDragEnd"
-              >
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6" style="grid-auto-rows: min-content; align-items: start;">
+            <div
+              v-for="status in taskStatuses"
+              :key="status.id"
+              class="bg-white dark:bg-gray-800 rounded-lg shadow-sm flex flex-col transition-all duration-300"
+              :class="{ 'collapsed-column': isColumnCollapsed(status.id) }"
+              @dragover.prevent
+              @drop.prevent="handleDrop($event, status.id)"
+            >
+              <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center justify-between">
-                  <span class="font-semibold text-gray-900 dark:text-white truncate">{{ task.title }}</span>
-                  <span
-                    class="px-2 py-0.5 text-2xs font-medium rounded-full"
-                    :class="task.priority === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'"
+                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {{ status.name }}
+                    <span class="ml-2 text-gray-500 dark:text-gray-400">
+                      ({{ filteredBoardTasks[status.id]?.length || 0 }})
+                    </span>
+                    <!-- Collapsed indicator -->
+                    <span 
+                      v-if="isColumnCollapsed(status.id)" 
+                      class="ml-2 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full"
+                    >
+                      Collapsed
+                    </span>
+                  </h3>
+                  <!-- Collapse button for all columns -->
+                  <button
+                    @click="toggleColumnCollapse(status.id)"
+                    class="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    :title="isColumnCollapsed(status.id) ? `Expand ${status.name.toLowerCase()} tasks` : `Collapse ${status.name.toLowerCase()} tasks`"
                   >
-                    {{ task.priority }}
-                  </span>
-                </div>
-                <div class="truncate text-gray-500 dark:text-gray-400">{{ task.description }}</div>
-                <div class="flex items-center justify-between mt-1">
-                  <div class="flex items-center space-x-1">
-                  <img
-                    v-if="task.assignee"
-                    :src="task.assignee.user_metadata?.avatar_url || 'https://ui-avatars.com/api/?name=' + task.assignee.email"
-                    class="w-4 h-4 rounded-full"
-                    :alt="task.assignee.email"
-                    :title="task.assignee.email"
-                  />
-                    <div
-                      v-else
-                      class="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center"
-                      title="Unassigned"
+                    <svg 
+                      class="w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+                      :class="{ 'rotate-180': isColumnCollapsed(status.id) }"
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
                     >
-                      <svg class="w-2 h-2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <span
-                      v-if="task.assignee_id === user?.id"
-                      class="px-1 py-0.5 text-2xs font-medium bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 rounded"
-                      title="Assigned to you"
-                    >
-                      You
-                    </span>
-                    <!-- Time tracking indicator -->
-                    <span
-                      v-if="task.estimated_hours"
-                      class="px-1 py-0.5 text-2xs font-medium bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 rounded"
-                      :title="task.completed_at ? `Estimated: ${task.estimated_hours}h, Actual: ${calculateActualTime(task)}` : `Estimated: ${task.estimated_hours}h`"
-                    >
-                      <svg class="w-2 h-2 inline mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span v-if="task.completed_at">{{ calculateActualTime(task) }}</span>
-                      <span v-else>{{ task.estimated_hours }}h</span>
-                    </span>
-                  </div>
-                  <span class="text-2xs text-gray-400 ml-auto">{{ task.due_date }}</span>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <button
-                v-if="(filteredBoardTasks[status.id]?.length || 0) > 6"
-                class="w-full mt-2 py-1 text-xs font-semibold text-primary-600 bg-primary-50 dark:bg-primary-900 rounded hover:bg-primary-100 dark:hover:bg-primary-800 transition"
-                @click="openShowAllModal(status.id)"
+              
+              <div 
+                class="overflow-hidden transition-all duration-300" 
+                :style="{ 
+                  maxHeight: isColumnCollapsed(status.id) ? '0px' : 'none',
+                  padding: isColumnCollapsed(status.id) ? '0px' : '1rem'
+                }"
               >
-                Show All
-              </button>
-            </div>
+                <div 
+                  v-show="!isColumnCollapsed(status.id)"
+                  class="space-y-4"
+                  style="max-height: 420px; overflow-y: auto;"
+                >
+                  <div
+                    v-for="(task, idx) in (filteredBoardTasks[status.id] || []).slice(0, 6)"
+                    :key="task.id"
+                    class="px-2 py-1.5 rounded-lg cursor-move hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-700 text-xs flex flex-col gap-1"
+                    :style="{ backgroundColor: task.color ? (task.color + '22') : (status.id === 'todo' ? '#e3eafe' : status.id === 'in_progress' ? '#fef9e3' : status.id === 'review' ? '#f3e3fe' : status.id === 'done' ? '#e3fee7' : '#fff') }"
+                    @click="selectedTask = task"
+                    draggable="true"
+                    @dragstart="handleDragStart($event, task)"
+                    @dragend="handleDragEnd"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="font-semibold text-gray-900 dark:text-white truncate">{{ task.title }}</span>
+                      <span
+                        class="px-2 py-0.5 text-2xs font-medium rounded-full"
+                        :class="task.priority === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'"
+                      >
+                        {{ task.priority }}
+                      </span>
+                    </div>
+                    <div class="truncate text-gray-500 dark:text-gray-400">{{ task.description }}</div>
+                    <div class="flex items-center justify-between mt-1">
+                      <div class="flex items-center space-x-1">
+                        <img
+                          v-if="task.assignee"
+                          :src="task.assignee.user_metadata?.avatar_url || 'https://ui-avatars.com/api/?name=' + task.assignee.email"
+                          class="w-4 h-4 rounded-full"
+                          :alt="task.assignee.email"
+                          :title="task.assignee.email"
+                        />
+                        <div
+                          v-else
+                          class="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center"
+                          title="Unassigned"
+                        >
+                          <svg class="w-2 h-2 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <span
+                          v-if="task.assignee_id === user?.id"
+                          class="px-1 py-0.5 text-2xs font-medium bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300 rounded"
+                          title="Assigned to you"
+                        >
+                          You
+                        </span>
+                        <!-- Time tracking indicator -->
+                        <span
+                          v-if="task.estimated_hours"
+                          class="px-1 py-0.5 text-2xs font-medium bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300 rounded"
+                          :title="task.completed_at ? `Estimated: ${task.estimated_hours}h, Actual: ${calculateActualTime(task)}` : `Estimated: ${task.estimated_hours}h`"
+                        >
+                          <svg class="w-2 h-2 inline mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span v-if="task.completed_at">{{ calculateActualTime(task) }}</span>
+                          <span v-else>{{ task.estimated_hours }}h</span>
+                        </span>
+                      </div>
+                      <span class="text-2xs text-gray-400 ml-auto">{{ task.due_date }}</span>
+                    </div>
+                  </div>
+                  
+                  <button
+                    v-if="(filteredBoardTasks[status.id]?.length || 0) > 6"
+                    class="w-full mt-2 py-1 text-xs font-semibold text-primary-600 bg-primary-50 dark:bg-primary-900 rounded hover:bg-primary-100 dark:hover:bg-primary-800 transition"
+                    @click="openShowAllModal(status.id)"
+                  >
+                    Show All
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2479,8 +2519,49 @@ const assigneeDisplayName = computed(() => {
 
 const showAllModal = ref({ open: false, status: null, search: '' })
 
+// Column collapse state - Done collapsed by default, with localStorage persistence
+const getInitialCollapsedColumns = () => {
+  if (process.client) {
+    try {
+      const saved = localStorage.getItem('taskflow-collapsed-columns')
+      if (saved) {
+        return new Set(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.warn('Failed to load collapsed columns from localStorage:', e)
+    }
+  }
+  // Default: Done column collapsed
+  return new Set(['done'])
+}
+
+const collapsedColumns = ref(getInitialCollapsedColumns())
+
 function openShowAllModal(statusId) {
   showAllModal.value = { open: true, status: statusId, search: '' }
+}
+
+// Column collapse functions
+function toggleColumnCollapse(columnId) {
+  const collapsed = collapsedColumns.value
+  if (collapsed.has(columnId)) {
+    collapsed.delete(columnId)
+  } else {
+    collapsed.add(columnId)
+  }
+  
+  // Save to localStorage
+  if (process.client) {
+    try {
+      localStorage.setItem('taskflow-collapsed-columns', JSON.stringify([...collapsed]))
+    } catch (e) {
+      console.warn('Failed to save collapsed columns to localStorage:', e)
+    }
+  }
+}
+
+function isColumnCollapsed(columnId) {
+  return collapsedColumns.value.has(columnId)
 }
 
 const filteredShowAllTasks = computed(() => {
@@ -2695,5 +2776,21 @@ watch([showNewTaskModal, showNewTeamModal, showNewProjectModal, showInviteTeamMe
 
 .lg\:hidden .w-14.h-14 {
   animation: float 3s ease-in-out infinite;
+}
+
+/* Rotation utility for collapse button */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Grid layout improvements for collapsible columns */
+.grid.items-start > div {
+  align-self: start;
+}
+
+/* Ensure collapsed columns take minimal space */
+.collapsed-column {
+  height: auto !important;
+  min-height: auto !important;
 }
 </style> 
