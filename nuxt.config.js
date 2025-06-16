@@ -13,7 +13,7 @@ export default {
   ],
   colorMode: {
     classSuffix: '',
-    preference: 'system',
+    preference: 'light', // Default to light mode always
     fallback: 'light'
   },
   app: {
